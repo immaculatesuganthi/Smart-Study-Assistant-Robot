@@ -11,4 +11,4 @@ FreeRTOS-based Smart Study Assistant Robot using ESP32-WROOM-DA featuring autono
 
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-![Robot](images/C:\Users\User\Pictures\smart assistant robot.jpg)
+![Robot](images/smart assistant robot.jpg)
