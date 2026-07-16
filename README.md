@@ -58,3 +58,21 @@ The robot can navigate autonomously, avoid obstacles, detect table edges, displa
 | Sound Sensor | 1 |
 | Buzzer | 1 |
 | 18650 Battery | 2 |
+
+## Software Stack
+
+Arduino IDE
+
+Embedded C++
+
+FreeRTOS
+
+HTML
+
+CSS
+
+JavaScript
+
+Git
+
+GitHub
