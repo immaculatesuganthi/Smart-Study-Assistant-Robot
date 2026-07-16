@@ -18,3 +18,29 @@ FreeRTOS-based Smart Study Assistant Robot using ESP32-WROOM-DA featuring autono
 The Smart Study Assistant Robot is an autonomous educational robot developed using the ESP32-WROOM-DA microcontroller. The system combines embedded systems, FreeRTOS multitasking, IoT communication, and autonomous robotics to create an interactive study companion.
 
 The robot can navigate autonomously, avoid obstacles, detect table edges, display emotional expressions, provide Pomodoro study reminders, and be remotely controlled using a WiFi-based web dashboard.
+
+## Features
+
+- Autonomous Navigation
+
+- Obstacle Avoidance
+
+- Edge Detection
+
+- FreeRTOS Multitasking
+
+- Dual-Core Task Scheduling
+
+- OLED Facial Expressions
+
+- WiFi Web Dashboard
+
+- Manual and Autonomous Modes
+
+- Study Timer
+
+- Sound Interaction
+
+- Battery Powered
+
+- Embedded IoT System
