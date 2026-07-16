@@ -76,3 +76,37 @@ JavaScript
 Git
 
 GitHub
+
+## System Architecture
+
+![Architecture](images/SystemArchitecture.png)
+
+## FreeRTOS Architecture
+
+The project implements twelve concurrent FreeRTOS tasks distributed across both ESP32 cores.
+
+Core 0
+
+WiFi
+
+Dashboard
+
+Study Timer
+
+System Monitoring
+
+Core 1
+
+Obstacle Detection
+
+Motor Control
+
+Servo
+
+OLED
+
+Navigation
+
+IR Detection
+
+Buzzer
