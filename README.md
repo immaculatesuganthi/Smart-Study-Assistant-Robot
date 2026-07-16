@@ -61,21 +61,21 @@ The robot can navigate autonomously, avoid obstacles, detect table edges, displa
 
 ## Software Stack
 
-Arduino IDE
+-Arduino IDE
 
-Embedded C++
+-Embedded C++
 
-FreeRTOS
+-FreeRTOS
 
-HTML
+-HTML
 
-CSS
+-CSS
 
-JavaScript
+-JavaScript
 
-Git
+-Git
 
-GitHub
+-GitHub
 
 ## System Architecture
 
@@ -87,26 +87,28 @@ The project implements twelve concurrent FreeRTOS tasks distributed across both 
 
 Core 0
 
-WiFi
+-WiFi
 
-Dashboard
+-Dashboard
 
-Study Timer
+-Study Timer
 
-System Monitoring
+-System Monitoring
 
 Core 1
 
-Obstacle Detection
+-Obstacle Detection
 
-Motor Control
+-Motor Control
 
-Servo
+-Servo
 
-OLED
+-OLED
 
-Navigation
+-Navigation
 
-IR Detection
+-IR Detection
 
-Buzzer
+-Buzzer
+
+## Installation Guide
