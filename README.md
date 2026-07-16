@@ -44,3 +44,17 @@ The robot can navigate autonomously, avoid obstacles, detect table edges, displa
 - Battery Powered
 
 - Embedded IoT System
+
+## Hardware Used
+
+| Component | Quantity |
+|-----------|----------|
+| ESP32-WROOM-DA | 1 |
+| L298N | 1 |
+| HC-SR04 | 1 |
+| Servo | 1 |
+| IR Sensor | 2 |
+| OLED | 1 |
+| Sound Sensor | 1 |
+| Buzzer | 1 |
+| 18650 Battery | 2 |
