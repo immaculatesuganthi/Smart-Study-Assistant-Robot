@@ -78,8 +78,6 @@ The robot can navigate autonomously, avoid obstacles, detect table edges, displa
 -GitHub
 
 ## System Architecture
-![Uploading image.png…]()
-
 
 ## FreeRTOS Architecture
 
