@@ -78,71 +78,8 @@ The robot can navigate autonomously, avoid obstacles, detect table edges, displa
 -GitHub
 
 ## System Architecture
+![Uploading image.png…]()
 
-            ┌──────────────────────┐
-            │      START / ON      │
-            └─────────┬────────────┘
-                      │
-                      v
-        ┌───────────────────────────┐
-        │ ESP32 Initialization      │
-        │ - Sensors setup          │
-        │ - Motors setup           │
-        │ - OLED initialization    │
-        │ - WiFi AP start          │
-        └─────────┬─────────────────┘
-                  │
-                  v
-        ┌───────────────────────────┐
-        │ FreeRTOS Task Scheduler   │
-        │ (All tasks activated)     │
-        └─────────┬─────────────────┘
-                  │
-                  v
-        ┌───────────────────────────┐
-        │ Mode Selection            │
-        │ Manual / Autonomous       │
-        └─────────┬─────────────────┘
-                  │
-        ┌─────────┴─────────┐
-        │                   │
-        v                   v
-┌────────────────┐   ┌─────────────────────┐
-│ MANUAL MODE    │   │ AUTONOMOUS MODE     │
-│                │   │                     │
-│ Control via    │   │ Sensor-based logic  │
-│ Web Dashboard  │   │ (Ultrasonic + IR)   │
-└──────┬─────────┘   └─────────┬───────────┘
-       │                       │
-       v                       v
-┌────────────────┐   ┌─────────────────────┐
-│ Motor Control  │   │ Obstacle Detection  │
-│ Execution      │   │ Edge Detection      │
-└──────┬─────────┘   └─────────┬───────────┘
-       │                       │
-       └───────────┬───────────┘
-                   v
-        ┌───────────────────────────┐
-        │ OLED Emotion Update       │
-        │ + Buzzer Alerts          │
-        └─────────┬─────────────────┘
-                  │
-                  v
-        ┌───────────────────────────┐
-        │ Study Timer (Pomodoro)    │
-        │ + Sound Interaction       │
-        └─────────┬─────────────────┘
-                  │
-                  v
-        ┌───────────────────────────┐
-        │ WiFi Dashboard Update     │
-        │ (Live Sensor Data)        │
-        └─────────┬─────────────────┘
-                  │
-                  v
-        ┌───────────────────────────┐
-        │      LOOP CONTINUES       │
-        └───────────────────────────┘
 
 ## FreeRTOS Architecture
 
