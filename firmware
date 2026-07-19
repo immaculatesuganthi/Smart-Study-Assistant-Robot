@@ -1,0 +1,495 @@
+/*
+ * ============================================================
+ *  Smart Study Assistant Robot
+ *  ESP32-WROOM | FreeRTOS | WiFi AP | WebSocket
+ * ============================================================
+ *  Updated:
+ *   - Motor speed reduced for smoother movement
+ *   - Improved OLED emoji faces for 0.96" SSD1306
+ *   - Removed alert exclamation mark
+ *   - Optimized for 12V SMPS + L298N
+ * ============================================================
+ */
+
+#include <Arduino.h>
+#include <Wire.h>
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <ESP32Servo.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/semphr.h>
+
+// ─── WiFi AP ──────────────────────────────────────────────
+#define WIFI_SSID     "StudyRobot"
+#define WIFI_PASSWORD "robot1234"
+
+// ─── Motor Pins ───────────────────────────────────────────
+#define IN1  25
+#define IN2  26
+#define IN3  27
+#define IN4  14
+#define ENA  32
+#define ENB  33
+
+// ─── Motor Speed ──────────────────────────────────────────
+#define PWM_FREQ      1000
+#define PWM_RES       8
+#define MOTOR_SPEED   80
+
+// ─── Sensors ──────────────────────────────────────────────
+#define TRIG_PIN      18
+#define ECHO_PIN      19
+#define IR_LEFT       34
+#define IR_RIGHT      35
+#define SOUND_PIN     4
+
+// ─── Interaction ──────────────────────────────────────────
+#define SERVO_PIN     13
+#define BUZZER_PIN    23
+
+// ─── OLED ─────────────────────────────────────────────────
+#define SCREEN_W      128
+#define SCREEN_H      64
+#define OLED_ADDR     0x3C
+
+#define OBSTACLE_DIST 20
+
+// ─── Globals ──────────────────────────────────────────────
+Adafruit_SSD1306 display(SCREEN_W, SCREEN_H, &Wire, -1);
+Servo headServo;
+
+AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
+
+SemaphoreHandle_t stateMutex;
+
+struct RobotState {
+  float distanceCm = 100;
+  bool irLeftEdge = false;
+  bool irRightEdge = false;
+  bool soundDetected = false;
+  bool obstacleAhead = false;
+  String emotion = "happy";
+  String manualCmd = "stop";
+  bool manualMode = false;
+  bool studyMode = false;
+  uint32_t studyStart = 0;
+} robot;
+
+// ─────────────────────────────────────────────────────────
+// MOTOR CONTROL
+// ─────────────────────────────────────────────────────────
+void setMotorSpeed(int speed) {
+  ledcWrite(ENA, speed);
+  ledcWrite(ENB, speed);
+}
+
+void motorsStop() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+}
+
+void motorsForward() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void motorsBackward() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+void motorsTurnLeft() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void motorsTurnRight() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+// ─────────────────────────────────────────────────────────
+// OLED FACE
+// ─────────────────────────────────────────────────────────
+void drawFace(String emotion) {
+
+  display.clearDisplay();
+
+  // Face outline
+  display.drawCircle(64, 32, 28, SSD1306_WHITE);
+
+  // ================= HAPPY =================
+  if (emotion == "happy") {
+
+    // Eyes
+    display.fillCircle(52, 24, 4, SSD1306_WHITE);
+    display.fillCircle(76, 24, 4, SSD1306_WHITE);
+
+    // Smile
+    for (int i = -14; i <= 14; i++) {
+      int y = 42 + (i * i) / 35;
+      display.drawPixel(64 + i, y, SSD1306_WHITE);
+    }
+  }
+
+  // ================= ALERT =================
+  else if (emotion == "alert") {
+
+    // Eyes
+    display.drawCircle(52, 24, 8, SSD1306_WHITE);
+    display.fillCircle(52, 24, 3, SSD1306_WHITE);
+
+    display.drawCircle(76, 24, 8, SSD1306_WHITE);
+    display.fillCircle(76, 24, 3, SSD1306_WHITE);
+
+    // Open mouth
+    display.drawRoundRect(56, 40, 16, 10, 3, SSD1306_WHITE);
+  }
+
+  // ================= SAD =================
+  else {
+
+    // Eyes
+    display.fillCircle(52, 26, 3, SSD1306_WHITE);
+    display.fillCircle(76, 26, 3, SSD1306_WHITE);
+
+    // Sad mouth
+    for (int i = -14; i <= 14; i++) {
+      int y = 50 - (i * i) / 35;
+      display.drawPixel(64 + i, y, SSD1306_WHITE);
+    }
+  }
+
+  display.display();
+}
+
+// ─────────────────────────────────────────────────────────
+// BUZZER
+// ─────────────────────────────────────────────────────────
+void beep(int freq, int durationMs) {
+  tone(BUZZER_PIN, freq, durationMs);
+}
+
+// ─────────────────────────────────────────────────────────
+// ULTRASONIC
+// ─────────────────────────────────────────────────────────
+float measureDistance() {
+
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+
+  digitalWrite(TRIG_PIN, LOW);
+
+  long duration = pulseIn(ECHO_PIN, HIGH, 25000);
+
+  if (duration == 0) return 999;
+
+  return duration * 0.034 / 2.0;
+}
+
+// ─────────────────────────────────────────────────────────
+// SENSOR TASK
+// ─────────────────────────────────────────────────────────
+void sensorTask(void *pvParameters) {
+
+  while (true) {
+
+    float dist = measureDistance();
+
+    bool irL = (digitalRead(IR_LEFT) == LOW);
+    bool irR = (digitalRead(IR_RIGHT) == LOW);
+
+    bool sound = digitalRead(SOUND_PIN);
+
+    xSemaphoreTake(stateMutex, portMAX_DELAY);
+
+    robot.distanceCm = dist;
+    robot.irLeftEdge = irL;
+    robot.irRightEdge = irR;
+    robot.soundDetected = sound;
+    robot.obstacleAhead = (dist < OBSTACLE_DIST);
+
+    xSemaphoreGive(stateMutex);
+
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// NAVIGATION TASK
+// ─────────────────────────────────────────────────────────
+void navigationTask(void *pvParameters) {
+
+  while (true) {
+
+    xSemaphoreTake(stateMutex, portMAX_DELAY);
+
+    bool manual = robot.manualMode;
+    String cmd = robot.manualCmd;
+
+    bool obs = robot.obstacleAhead;
+    bool irL = robot.irLeftEdge;
+    bool irR = robot.irRightEdge;
+
+    xSemaphoreGive(stateMutex);
+
+    if (manual) {
+
+      if (cmd == "forward") motorsForward();
+      else if (cmd == "backward") motorsBackward();
+      else if (cmd == "left") motorsTurnLeft();
+      else if (cmd == "right") motorsTurnRight();
+      else motorsStop();
+
+    } else {
+
+      if (irL || irR) {
+
+        motorsBackward();
+        vTaskDelay(350 / portTICK_PERIOD_MS);
+
+        motorsTurnRight();
+        vTaskDelay(450 / portTICK_PERIOD_MS);
+      }
+
+      else if (obs) {
+
+        motorsStop();
+        vTaskDelay(150 / portTICK_PERIOD_MS);
+
+        motorsTurnLeft();
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+      }
+
+      else {
+        motorsForward();
+      }
+    }
+
+    vTaskDelay(50 / portTICK_PERIOD_MS);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// INTERACTION TASK
+// ─────────────────────────────────────────────────────────
+void interactionTask(void *pvParameters) {
+
+  int servoDir = 1;
+  int servoAngle = 90;
+
+  while (true) {
+
+    xSemaphoreTake(stateMutex, portMAX_DELAY);
+
+    bool obs = robot.obstacleAhead;
+    bool irL = robot.irLeftEdge;
+    bool irR = robot.irRightEdge;
+    bool sound = robot.soundDetected;
+
+    xSemaphoreGive(stateMutex);
+
+    String emotion = "happy";
+
+    if (obs || irL || irR)
+      emotion = "alert";
+
+    drawFace(emotion);
+
+    // Sound reaction
+    if (sound) {
+
+      beep(1000, 100);
+
+      headServo.write(60);
+      vTaskDelay(150 / portTICK_PERIOD_MS);
+
+      headServo.write(120);
+      vTaskDelay(150 / portTICK_PERIOD_MS);
+
+      headServo.write(90);
+    }
+
+    // Idle sweep
+    servoAngle += servoDir * 2;
+
+    if (servoAngle >= 130 || servoAngle <= 50)
+      servoDir *= -1;
+
+    headServo.write(servoAngle);
+
+    vTaskDelay(180 / portTICK_PERIOD_MS);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// WEBSOCKET EVENTS
+// ─────────────────────────────────────────────────────────
+void onWsEvent(AsyncWebSocket *server,
+               AsyncWebSocketClient *client,
+               AwsEventType type,
+               void *arg,
+               uint8_t *data,
+               size_t len) {
+
+  if (type == WS_EVT_DATA) {
+
+    String msg = "";
+
+    for (size_t i = 0; i < len; i++)
+      msg += (char)data[i];
+
+    msg.trim();
+
+    xSemaphoreTake(stateMutex, portMAX_DELAY);
+
+    if (msg == "forward") {
+      robot.manualCmd = "forward";
+      robot.manualMode = true;
+    }
+
+    else if (msg == "backward") {
+      robot.manualCmd = "backward";
+      robot.manualMode = true;
+    }
+
+    else if (msg == "left") {
+      robot.manualCmd = "left";
+      robot.manualMode = true;
+    }
+
+    else if (msg == "right") {
+      robot.manualCmd = "right";
+      robot.manualMode = true;
+    }
+
+    else if (msg == "stop") {
+      robot.manualCmd = "stop";
+      robot.manualMode = true;
+    }
+
+    else if (msg == "auto") {
+      robot.manualMode = false;
+    }
+
+    xSemaphoreGive(stateMutex);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// WIFI TASK
+// ─────────────────────────────────────────────────────────
+void wifiTask(void *pvParameters) {
+
+  while (true) {
+
+    ws.cleanupClients();
+
+    vTaskDelay(200 / portTICK_PERIOD_MS);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// SETUP
+// ─────────────────────────────────────────────────────────
+void setup() {
+
+  Serial.begin(115200);
+
+  // Motor pins
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  ledcAttach(ENA, PWM_FREQ, PWM_RES);
+  ledcAttach(ENB, PWM_FREQ, PWM_RES);
+
+  setMotorSpeed(MOTOR_SPEED);
+
+  // Sensors
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  pinMode(IR_LEFT, INPUT);
+  pinMode(IR_RIGHT, INPUT);
+
+  pinMode(SOUND_PIN, INPUT);
+
+  // Buzzer
+  pinMode(BUZZER_PIN, OUTPUT);
+
+  // Servo
+  ESP32PWM::allocateTimer(2);
+
+  headServo.setPeriodHertz(50);
+  headServo.attach(SERVO_PIN, 500, 2400);
+
+  headServo.write(90);
+
+  // OLED
+  Wire.begin(21, 22);
+
+  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
+    Serial.println("OLED Failed");
+  }
+
+  drawFace("happy");
+
+  // Mutex
+  stateMutex = xSemaphoreCreateMutex();
+
+  // WiFi AP
+  WiFi.softAP(WIFI_SSID, WIFI_PASSWORD);
+
+  Serial.print("AP IP: ");
+  Serial.println(WiFi.softAPIP());
+
+  // WebSocket
+  ws.onEvent(onWsEvent);
+
+  server.addHandler(&ws);
+
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "Study Robot Running");
+  });
+
+  server.begin();
+
+  // Tasks
+  xTaskCreatePinnedToCore(sensorTask, "SensorTask", 4096, NULL, 3, NULL, 1);
+
+  xTaskCreatePinnedToCore(navigationTask, "NavTask", 4096, NULL, 2, NULL, 1);
+
+  xTaskCreatePinnedToCore(interactionTask, "InteractTask", 4096, NULL, 2, NULL, 0);
+
+  xTaskCreatePinnedToCore(wifiTask, "WiFiTask", 4096, NULL, 1, NULL, 0);
+
+  Serial.println("Study Robot Ready");
+}
+
+// ─────────────────────────────────────────────────────────
+// LOOP
+// ─────────────────────────────────────────────────────────
+void loop() {
+
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+}
