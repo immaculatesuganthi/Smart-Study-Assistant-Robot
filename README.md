@@ -3,13 +3,13 @@ FreeRTOS-based Smart Study Assistant Robot using ESP32-WROOM-DA featuring autono
 
 ![Platform](https://img.shields.io/badge/Platform-ESP32-blue)
 
-![Language](https://img.shields.io/badge/Language-C++-orange)
+![Language](https://img.shields.io/badge/Language-C++-lightpink)
 
-![RTOS](https://img.shields.io/badge/RTOS-FreeRTOS-green)
+![RTOS](https://img.shields.io/badge/RTOS-FreeRTOS-skyblue)
 
 ![IoT](https://img.shields.io/badge/IoT-WiFi-purple)
 
-![License](https://img.shields.io/badge/License-MIT-yellow)
+![License](https://img.shields.io/badge/License-MIT-lavender)
 
 
 
