@@ -7,9 +7,9 @@ FreeRTOS-based Smart Study Assistant Robot using ESP32-WROOM-DA featuring autono
 
 ![RTOS](https://img.shields.io/badge/RTOS-FreeRTOS-skyblue)
 
-![IoT](https://img.shields.io/badge/IoT-WiFi-purple)
+![IoT](https://img.shields.io/badge/IoT-WiFi-pink)
 
-![License](https://img.shields.io/badge/License-MIT-lavender)
+![License](https://img.shields.io/badge/License-MIT-purple)
 
 
 
@@ -61,21 +61,14 @@ The robot can navigate autonomously, avoid obstacles, detect table edges, displa
 
 ## Software Stack
 
--Arduino IDE
-
--Embedded C++
-
--FreeRTOS
-
--HTML
-
--CSS
-
--JavaScript
-
--Git
-
--GitHub
+Arduino IDE
+Embedded C++
+FreeRTOS
+HTML
+CSS
+JavaScript
+Git
+GitHub
 
 ## System Architecture
 
@@ -84,30 +77,19 @@ The robot can navigate autonomously, avoid obstacles, detect table edges, displa
 The project implements twelve concurrent FreeRTOS tasks distributed across both ESP32 cores.
 
 Core 0
-
--WiFi
-
--Dashboard
-
--Study Timer
-
--System Monitoring
+WiFi
+Dashboard
+Study Timer
+System Monitoring
 
 Core 1
-
--Obstacle Detection
-
--Motor Control
-
--Servo
-
--OLED
-
--Navigation
-
--IR Detection
-
--Buzzer
+Obstacle Detection
+Motor Control
+Servo
+OLED
+Navigation
+IR Detection
+Buzzer
 
 ## Installation Guide
 
@@ -194,9 +176,6 @@ The dashboard provides:
 | OLED SDA | GPIO 21 |
 | OLED SCL | GPIO 22 |
 
-For the complete wiring diagram, refer to:
-
-`hardware/Circuit_Diagram.pdf`
 
 ### Verify Operation
 
